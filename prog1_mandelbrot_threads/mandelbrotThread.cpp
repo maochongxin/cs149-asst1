@@ -12,6 +12,8 @@ typedef struct {
     int* output;
     int threadId;
     int numThreads;
+    int startRow;
+    int numRows;
 } WorkerArgs;
 
 
@@ -35,7 +37,21 @@ void workerThreadStart(WorkerArgs * const args) {
     // program that uses two threads, thread 0 could compute the top
     // half of the image and thread 1 could compute the bottom half.
 
-    printf("Hello world from thread %d\n", args->threadId);
+    // printf("Hello world from thread %d\n", args->threadId);
+    double minSerial = 1e30;
+    double startTime = CycleTimer::currentSeconds();
+    // int startRowBase = args->threadId;
+    // int selectRowBase = args->height / args->numThreads;
+    // int realSelectRow = selectRowBase;
+    // if (args->height < (2 + startRowBase) * selectRowBase) {
+    //     realSelectRow = args->height - startRowBase * selectRowBase;
+    // }
+    // mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, startRowBase * selectRowBase, realSelectRow, args->maxIterations, args->output);
+
+    mandelbrotSerial(args->x0, args->y0, args->x1, args->y1, args->width, args->height, args->startRow, args->numRows, args->maxIterations, args->output);
+    double endTime = CycleTimer::currentSeconds();
+    minSerial = std::min(minSerial, endTime - startTime);
+    printf("threadId: %d, startRow: %d, rows: %d, [mandelbrot serial]:\t\t[%.3f] ms\n", args->threadId, args->startRow, args->numRows, minSerial * 1000);
 }
 
 //
@@ -77,6 +93,12 @@ void mandelbrotThread(
         args[i].output = output;
       
         args[i].threadId = i;
+        args[i].numRows = args[i].height / args[i].numThreads;
+        args[i].startRow = args[i].threadId * args[i].numRows;
+
+        if (args->height < (2 + args->threadId) * args[i].numRows) {
+            args[i].numRows = args->height - args[i].threadId * args[i].numRows;
+        }
     }
 
     // Spawn the worker threads.  Note that only numThreads-1 std::threads
